@@ -1,0 +1,2009 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BiblioEscolar - Gestió de Biblioteca</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- SheetJS: exportació a Excel .xlsx; hi ha una alternativa integrada si no hi ha connexió -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --library-ink: #20352f; --library-green: #244b3f; --library-green-dark: #18382f; --library-paper: #f5f4ef; --library-gold: #b69a5a; }
+        body { font-family: 'Inter', sans-serif; background: var(--library-paper); }
+        header.bg-indigo-700 { background: var(--library-green) !important; border-bottom: 3px solid var(--library-gold); }
+        header .bg-indigo-800, header .bg-indigo-900 { background: var(--library-green-dark) !important; }
+        header .hover\:bg-indigo-600:hover, header .hover\:bg-indigo-700:hover { background: #315e50 !important; }
+        main h2 { letter-spacing: -.025em; }
+        main h2, main h3 { color: var(--library-ink); }
+        main .bg-indigo-600 { background: var(--library-green) !important; }
+        main .hover\:bg-indigo-700:hover { background: var(--library-green-dark) !important; }
+        main .text-indigo-600 { color: var(--library-green) !important; }
+        main .border-slate-100 { border-color: #e3e2d9 !important; }
+        main .rounded-2xl { border-radius: 12px; }
+        main .shadow-sm { box-shadow: 0 2px 8px rgba(32,53,47,.045); }
+        button, label { transition: background-color .18s ease, box-shadow .18s ease, transform .18s ease; }
+        button:focus-visible, label:focus-within { outline: 3px solid #c7b47e; outline-offset: 2px; }
+        @media print { header, button, label { display: none !important; } body { background: #fff; } main { max-width: none; } }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col">
+
+    <!-- Header / Navbar -->
+    <header class="bg-indigo-700 text-white shadow-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="bg-white/10 p-2 rounded-lg">
+                    <i class="fa-solid fa-book-bookmark text-2xl text-indigo-200"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-tight">BiblioEscolar</h1>
+                    <p class="text-xs text-indigo-200">Sistema de Gestió de Biblioteca</p>
+                </div>
+            </div>
+            <!-- Mobile Menu Toggle -->
+            <button id="menu-toggle" class="md:hidden text-white focus:outline-none p-2 rounded-lg hover:bg-indigo-600">
+                <i class="fa-solid fa-bars text-xl"></i>
+            </button>
+            <!-- Desktop Nav -->
+            <nav class="hidden md:flex space-x-1">
+                <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-btn px-3 py-2 rounded-lg text-sm font-medium transition bg-indigo-800 text-white shadow-sm flex items-center gap-2">
+                    <i class="fa-solid fa-chart-pie"></i> Inici
+                </button>
+                <button onclick="switchTab('books')" id="nav-books" class="nav-btn px-3 py-2 rounded-lg text-sm font-medium transition text-indigo-100 hover:bg-indigo-600 flex items-center gap-2">
+                    <i class="fa-solid fa-book"></i> Catàleg
+                </button>
+                <button onclick="switchTab('users')" id="nav-users" class="nav-btn px-3 py-2 rounded-lg text-sm font-medium transition text-indigo-100 hover:bg-indigo-600 flex items-center gap-2">
+                    <i class="fa-solid fa-users"></i> Usuaris
+                </button>
+                <button onclick="switchTab('loans')" id="nav-loans" class="nav-btn px-3 py-2 rounded-lg text-sm font-medium transition text-indigo-100 hover:bg-indigo-600 flex items-center gap-2">
+                    <i class="fa-solid fa-right-left"></i> Préstecs
+                </button>
+            </nav>
+        </div>
+        <!-- Mobile Dropdown Nav -->
+        <div id="mobile-menu" class="hidden md:hidden bg-indigo-800 px-4 pt-2 pb-3 space-y-1 border-t border-indigo-600">
+            <button onclick="switchTab('dashboard')" class="mobile-nav-btn w-full text-left px-3 py-2 rounded-lg text-sm font-medium bg-indigo-900 text-white flex items-center gap-2">
+                <i class="fa-solid fa-chart-pie"></i> Inici
+            </button>
+            <button onclick="switchTab('books')" class="mobile-nav-btn w-full text-left px-3 py-2 rounded-lg text-sm font-medium text-indigo-100 hover:bg-indigo-700 flex items-center gap-2">
+                <i class="fa-solid fa-book"></i> Catàleg
+            </button>
+            <button onclick="switchTab('users')" class="mobile-nav-btn w-full text-left px-3 py-2 rounded-lg text-sm font-medium text-indigo-100 hover:bg-indigo-700 flex items-center gap-2">
+                <i class="fa-solid fa-users"></i> Usuaris
+            </button>
+            <button onclick="switchTab('loans')" class="mobile-nav-btn w-full text-left px-3 py-2 rounded-lg text-sm font-medium text-indigo-100 hover:bg-indigo-700 flex items-center gap-2">
+                <i class="fa-solid fa-right-left"></i> Préstecs
+            </button>
+        </div>
+    </header>
+
+    <!-- Toast Notification container -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-2"></div>
+
+    <!-- Main Content Wrapper -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+        <!-- 1. DASHBOARD VIEW -->
+        <section id="view-dashboard" class="space-y-6">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-900">Tauler Principal</h2>
+                    <p class="text-sm text-slate-500">Resum general de la biblioteca escolar</p>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <button id="btn-export-json" type="button" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium px-3.5 py-2 rounded-lg shadow-sm transition flex items-center gap-2" title="Descarrega una còpia de seguretat en JSON">
+                        <i class="fa-solid fa-file-code text-indigo-600"></i> Exportar JSON
+                    </button>
+                    <button id="btn-export-excel" type="button" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-sm font-medium px-3.5 py-2 rounded-lg shadow-sm transition flex items-center gap-2" title="Exporta llibres, usuaris i préstecs a un llibre d'Excel">
+                        <i class="fa-solid fa-file-excel"></i> Exportar Excel
+                    </button>
+                    <label class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium px-3.5 py-2 rounded-lg shadow-sm transition flex items-center gap-2 cursor-pointer" title="Carrega una còpia de seguretat JSON prèvia">
+                        <i class="fa-solid fa-upload text-indigo-600"></i> Importar Dades
+                        <input type="file" id="import-file-input" accept=".json" onchange="importDataFile(event)" class="hidden">
+                    </label>
+                    <button onclick="switchTab('loans'); openLoanModal();" class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg shadow transition flex items-center gap-2">
+                        <i class="fa-solid fa-plus"></i> Nou Préstec
+                    </button>
+                </div>
+            </div>
+
+            <!-- Metric Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
+                    <div class="bg-indigo-50 text-indigo-600 p-4 rounded-xl text-xl">
+                        <i class="fa-solid fa-book"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Total Llibres</p>
+                        <h3 id="stat-total-books" class="text-2xl font-bold text-slate-900">0</h3>
+                    </div>
+                </div>
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
+                    <div class="bg-emerald-50 text-emerald-600 p-4 rounded-xl text-xl">
+                        <i class="fa-solid fa-users"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Usuaris Registrats</p>
+                        <h3 id="stat-total-users" class="text-2xl font-bold text-slate-900">0</h3>
+                    </div>
+                </div>
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
+                    <div class="bg-amber-50 text-amber-600 p-4 rounded-xl text-xl">
+                        <i class="fa-solid fa-clock-rotate-left"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Préstecs Actius</p>
+                        <h3 id="stat-active-loans" class="text-2xl font-bold text-slate-900">0</h3>
+                    </div>
+                </div>
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
+                    <div class="bg-rose-50 text-rose-600 p-4 rounded-xl text-xl">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Préstecs Retardats</p>
+                        <h3 id="stat-overdue-loans" class="text-2xl font-bold text-slate-900">0</h3>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent activity / quick tables -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Recent Loans -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="font-bold text-slate-900 flex items-center gap-2"><i class="fa-solid fa-list-check text-indigo-600"></i> Préstecs Recents</h3>
+                        <button onclick="switchTab('loans')" class="text-xs text-indigo-600 font-semibold hover:underline">Veure tots</button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-slate-50 text-slate-500 text-xs uppercase font-semibold">
+                                <tr>
+                                    <th class="p-3">Llibre</th>
+                                    <th class="p-3">Usuari</th>
+                                    <th class="p-3">Límit</th>
+                                    <th class="p-3">Estat</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dashboard-recent-loans" class="divide-y divide-slate-100">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Recent Books -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="font-bold text-slate-900 flex items-center gap-2"><i class="fa-solid fa-book-open text-indigo-600"></i> Catàleg Recent</h3>
+                        <button onclick="switchTab('books')" class="text-xs text-indigo-600 font-semibold hover:underline">Veure catàleg</button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-slate-50 text-slate-500 text-xs uppercase font-semibold">
+                                <tr>
+                                    <th class="p-3">Títol</th>
+                                    <th class="p-3">Temàtica</th>
+                                    <th class="p-3">Ubicació</th>
+                                    <th class="p-3">Disp.</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dashboard-recent-books" class="divide-y divide-slate-100">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. BOOKS CATALOG VIEW -->
+        <section id="view-books" class="space-y-6 hidden">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-900">Catàleg de Llibres</h2>
+                    <p class="text-sm text-slate-500">Gestió de llibres, estat de disponibilitat i historial de lectura</p>
+                </div>
+                <button onclick="openBookModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg shadow transition flex items-center gap-2">
+                    <i class="fa-solid fa-plus"></i> Registrar Llibre
+                </button>
+            </div>
+
+            <!-- Filters & Search Toolbar -->
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col md:flex-row gap-4 items-center justify-between">
+                <div class="relative w-full md:w-96">
+                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                    </span>
+                    <input type="text" id="book-search" oninput="renderBooks()" placeholder="Cercar per títol, autor, ISBN o temàtica..." class="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                    <select id="filter-book-category" onchange="renderBooks()" class="px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="">Totes les temàtiques</option>
+                        <option value="Narrativa">Narrativa</option>
+                        <option value="Poesia">Poesia</option>
+                        <option value="Còmics">Còmics</option>
+                        <option value="Ciències">Ciències</option>
+                        <option value="Història">Història</option>
+                        <option value="Infantil">Infantil</option>
+                    </select>
+                    <select id="filter-book-status" onchange="renderBooks()" class="px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="">Qualsevol estat</option>
+                        <option value="available">Disponibles</option>
+                        <option value="borrowed">En préstec / Parcialment préstecs</option>
+                        <option value="out">Sense estoc</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Books Table -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-slate-50 text-slate-500 text-xs uppercase font-semibold">
+                            <tr>
+                                <th class="p-4">Portada</th>
+                                <th class="p-4">ISBN / Títol / Autor</th>
+                                <th class="p-4">Temàtica</th>
+                                <th class="p-4">Nivell / Edat</th>
+                                <th class="p-4">Ubicació</th>
+                                <th class="p-4">Estat / Disponibilitat</th>
+                                <th class="p-4 text-right">Accions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="books-table-body" class="divide-y divide-slate-100">
+                            <!-- Dynamically populated -->
+                        </tbody>
+                    </table>
+                </div>
+                <div id="books-empty" class="hidden p-12 text-center text-slate-400">
+                    <i class="fa-solid fa-book-open text-4xl mb-3"></i>
+                    <p class="text-base font-medium">No s'han trobat llibres</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. USERS VIEW -->
+        <section id="view-users" class="space-y-6 hidden">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-900">Gestió d'Usuaris</h2>
+                    <p class="text-sm text-slate-500">Alumnat, professorat i personal del centre</p>
+                </div>
+                <button onclick="openUserModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg shadow transition flex items-center gap-2">
+                    <i class="fa-solid fa-user-plus"></i> Registrar Usuari
+                </button>
+            </div>
+
+            <!-- Filters & Search Toolbar -->
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col md:flex-row gap-4 items-center justify-between">
+                <div class="relative w-full md:w-96">
+                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                    </span>
+                    <input type="text" id="user-search" oninput="renderUsers()" placeholder="Cercar per nom, ID, curs o correu electrònic..." class="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                    <select id="filter-user-role" onchange="renderUsers()" class="px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="">Tots els rols</option>
+                        <option value="Alumnat">Alumnat</option>
+                        <option value="Professorat">Professorat</option>
+                        <option value="Personal">Personal</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Users Table -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-slate-50 text-slate-500 text-xs uppercase font-semibold">
+                            <tr>
+                                <th class="p-4">ID / Nom</th>
+                                <th class="p-4">Rol</th>
+                                <th class="p-4">Curs / Grup</th>
+                                <th class="p-4">Contacte</th>
+                                <th class="p-4">Préstecs Actius</th>
+                                <th class="p-4 text-right">Accions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-table-body" class="divide-y divide-slate-100">
+                            <!-- Dynamically populated -->
+                        </tbody>
+                    </table>
+                </div>
+                <div id="users-empty" class="hidden p-12 text-center text-slate-400">
+                    <i class="fa-solid fa-users-slash text-4xl mb-3"></i>
+                    <p class="text-base font-medium">No s'han trobat usuaris</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. LOANS & RETURNS VIEW -->
+        <section id="view-loans" class="space-y-6 hidden">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-900">Mòdul de Préstecs i Devolucions</h2>
+                    <p class="text-sm text-slate-500">Control de lliuraments i devolucions d'exemplars</p>
+                </div>
+                <button onclick="openLoanModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg shadow transition flex items-center gap-2">
+                    <i class="fa-solid fa-right-left"></i> Nou Préstec
+                </button>
+            </div>
+
+            <!-- Filters -->
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col md:flex-row gap-4 items-center justify-between">
+                <div class="relative w-full md:w-96">
+                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                    </span>
+                    <input type="text" id="loan-search" oninput="renderLoans()" placeholder="Cercar per llibre o usuari..." class="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div class="flex items-center gap-3 w-full md:w-auto">
+                    <select id="filter-loan-status" onchange="renderLoans()" class="px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="">Tots els estats</option>
+                        <option value="active">Pendents / Actius</option>
+                        <option value="returned">Retornats</option>
+                        <option value="overdue">Retardats</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Loans Table -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-slate-50 text-slate-500 text-xs uppercase font-semibold">
+                            <tr>
+                                <th class="p-4">Llibre</th>
+                                <th class="p-4">Usuari</th>
+                                <th class="p-4">Data Préstec</th>
+                                <th class="p-4">Data Límit</th>
+                                <th class="p-4">Estat</th>
+                                <th class="p-4 text-right">Acció</th>
+                            </tr>
+                        </thead>
+                        <tbody id="loans-table-body" class="divide-y divide-slate-100">
+                            <!-- Dynamically populated -->
+                        </tbody>
+                    </table>
+                </div>
+                <div id="loans-empty" class="hidden p-12 text-center text-slate-400">
+                    <i class="fa-solid fa-box-open text-4xl mb-3"></i>
+                    <p class="text-base font-medium">No s'han trobat registres de préstecs</p>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- MODALS -->
+
+    <!-- BOOK HISTORY MODAL (HISTORIAL DE PRÉSTECS D'UN LLIBRE) -->
+    <div id="modal-book-history" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full p-6 space-y-6 my-8">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+                <div class="flex items-center gap-3">
+                    <img id="book-history-cover" src="" class="w-12 h-16 object-cover rounded shadow-sm border border-slate-200 hidden">
+                    <div>
+                        <h3 id="book-history-title" class="text-lg font-bold text-slate-900">Historial del Llibre</h3>
+                        <p id="book-history-subtitle" class="text-xs text-slate-500">Persones que han agafat aquest llibre en préstec</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeBookHistoryModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            
+            <div class="overflow-x-auto max-h-80">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-slate-50 text-slate-500 text-xs uppercase font-semibold">
+                        <tr>
+                            <th class="p-3">Usuari / Lector</th>
+                            <th class="p-3">Curs / Rol</th>
+                            <th class="p-3">Data Préstec</th>
+                            <th class="p-3">Data Devolució</th>
+                            <th class="p-3">Estat</th>
+                        </tr>
+                    </thead>
+                    <tbody id="book-history-table-body" class="divide-y divide-slate-100">
+                        <!-- Populated dynamically -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <div id="book-history-empty" class="hidden p-8 text-center text-slate-400">
+                <i class="fa-solid fa-clock-rotate-left text-3xl mb-2"></i>
+                <p class="text-sm">Aquest llibre encara no té cap registre de préstec en l'historial.</p>
+            </div>
+            
+            <div class="flex justify-end pt-2 border-t border-slate-100">
+                <button type="button" onclick="closeBookHistoryModal()" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold">Tancar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- BOOK MODAL -->
+    <div id="modal-book" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 space-y-6 my-8">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+                <h3 id="book-modal-title" class="text-lg font-bold text-slate-900">Registrar Nou Llibre</h3>
+                <button type="button" onclick="closeBookModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            
+            <!-- Web Search Helper Bar -->
+            <div id="book-web-search-wrapper" class="bg-indigo-50/70 border border-indigo-100 p-3 rounded-xl space-y-2">
+                <label class="block text-xs font-bold text-indigo-900 uppercase">Cerca ràpida a la web (ISBN / Títol / Autor)</label>
+                <div class="flex gap-2">
+                    <input type="text" id="book-web-query" placeholder="Ex: 9788498381405 o El Petit Príncep" class="w-full px-3 py-1.5 rounded-lg border border-indigo-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <button type="button" onclick="searchBookOnWeb()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg shadow transition flex items-center gap-1 shrink-0">
+                        <i class="fa-solid fa-globe"></i> Cercar
+                    </button>
+                </div>
+                <p class="text-[11px] text-indigo-700">Autocompleta els camps del formulari usant dades bibliogràfiques en línia.</p>
+                
+                <!-- Web Search Results Dropdown / Selection Container -->
+                <div id="web-search-results-container" class="hidden mt-2 bg-white border border-indigo-200 rounded-xl shadow-lg max-h-56 overflow-y-auto p-2 space-y-1">
+                    <div class="text-xs font-semibold text-slate-500 px-2 py-1 flex items-center justify-between">
+                        <span>Selecciona un resultat:</span>
+                        <button type="button" onclick="document.getElementById('web-search-results-container').classList.add('hidden')" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                    <div id="web-search-results-list" class="divide-y divide-slate-100">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+            </div>
+
+            <form id="form-book" onsubmit="saveBook(event)" class="space-y-4">
+                <input type="hidden" id="book-id">
+                <div>
+                    <label class="block text-xs font-medium text-slate-700 uppercase mb-1">Títol</label>
+                    <input type="text" id="book-title" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Ex: El Petit Príncep">
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-700 uppercase mb-1">Autor</label>
+                        <input type="text" id="book-author" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Ex: Antoine de Saint-Exupéry">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-700 uppercase mb-1">ISBN</label>
+                        <input type="text" id="book-isbn" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Ex: 978-84-9838-140-5">
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-700 uppercase mb-1">Temàtica / Categoria</label>
+                        <select id="book-category" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="">-- Sense categoria --</option>
+                            <option value="Narrativa">Narrativa</option>
+                            <option value="Poesia">Poesia</option>
+                            <option value="Còmics">Còmics</option>
+                            <option value="Ciències">Ciències</option>
+                            <option value="Història">Història</option>
+                            <option value="Infantil">Infantil</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-700 uppercase mb-1">Edat recomanada / Nivell</label>
+                        <input type="text" id="book-level" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Ex: 10-12 anys / 5è Primària">
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-700 uppercase mb-1">Ubicació / Prestatgeria</label>
+                        <input type="text" id="book-shelf" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Ex: Prestatgeria A-3">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-700 uppercase mb-1">Nº Exemplars</label>
+                        <input type="number" id="book-copies" min="1" value="1" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="1">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-700 uppercase mb-1">URL de la Imatge de Portada</label>
+                    <input type="url" id="book-cover" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Ex: https://covers.openlibrary.org/b/isbn/9788498381405-M.jpg">
+                    <p class="text-[11px] text-slate-400 mt-1">Pots enganxar un enllaç directe d'imatge o utilitzar una portada estàndard d'Open Library.</p>
+                </div>
+                
+                <!-- Action Buttons Footer in Modal -->
+                <div class="flex items-center justify-between pt-4 border-t border-slate-100">
+                    <div>
+                        <!-- Dar de baja button inside edit mode -->
+                        <button type="button" id="btn-delete-book-modal" onclick="deleteBookFromModal()" class="hidden px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-trash"></i> Donar de baixa del catàleg
+                        </button>
+                    </div>
+                    <div class="flex space-x-3">
+                        <button type="button" onclick="closeBookModal()" class="px-4 py-2 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50">Cancel·lar</button>
+                        <button type="submit" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium shadow">Desar Llibre</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- USER MODAL -->
+    <div id="modal-user" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-6 my-8">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+                <h3 id="user-modal-title" class="text-lg font-bold text-slate-900">Registrar Nou Usuari</h3>
+                <button type="button" onclick="closeUserModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <form id="form-user" onsubmit="saveUser(event)" class="space-y-4">
+                <input type="hidden" id="user-hidden-id">
+                <div>
+                    <label class="block text-xs font-medium text-slate-700 uppercase mb-1">Nom Complet</label>
+                    <input type="text" id="user-name" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Ex: Llúcia Fernández Pérez">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-700 uppercase mb-1">Codi / ID</label>
+                        <input type="text" id="user-code" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Ex: ALU-105">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-700 uppercase mb-1">Rol</label>
+                        <select id="user-role" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="Alumnat">Alumnat</option>
+                            <option value="Professorat">Professorat</option>
+                            <option value="Personal">Personal</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-700 uppercase mb-1">Curs / Grup</label>
+                    <input type="text" id="user-course" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Ex: 5è Primària A">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-700 uppercase mb-1">Correu Electrònic / Contacte</label>
+                    <input type="email" id="user-email" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Ex: llucia@escola.cat">
+                </div>
+                <div class="flex justify-end space-x-3 pt-4 border-t border-slate-100">
+                    <button type="button" onclick="closeUserModal()" class="px-4 py-2 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50">Cancel·lar</button>
+                    <button type="submit" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium shadow">Desar Usuari</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- READING HISTORY MODAL FOR USERS -->
+    <div id="modal-history" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full p-6 space-y-6 my-8">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+                <div>
+                    <h3 id="history-modal-title" class="text-lg font-bold text-slate-900">Historial de Lectura</h3>
+                    <p id="history-modal-subtitle" class="text-xs text-slate-500">Detall de llibres llegits i préstecs de l'usuari</p>
+                </div>
+                <button type="button" onclick="closeHistoryModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div class="overflow-x-auto max-h-80">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-slate-50 text-slate-500 text-xs uppercase font-semibold">
+                        <tr>
+                            <th class="p-3">Títol del Llibre</th>
+                            <th class="p-3">Data Préstec</th>
+                            <th class="p-3">Data Devolució</th>
+                            <th class="p-3">Estat</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-table-body" class="divide-y divide-slate-100">
+                        <!-- Populated dynamically -->
+                    </tbody>
+                </table>
+            </div>
+            <div id="history-empty" class="hidden p-8 text-center text-slate-400">
+                <i class="fa-solid fa-book-open text-3xl mb-2"></i>
+                <p class="text-sm">Aquest usuari encara no té historial de lectura.</p>
+            </div>
+            <div class="flex justify-end pt-2 border-t border-slate-100">
+                <button type="button" onclick="closeHistoryModal()" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold">Tancar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CUSTOM CONFIRMATION MODAL FOR DELETING BOOKS -->
+    <div id="modal-confirm-delete" class="fixed inset-0 z-60 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 text-center space-y-4">
+            <div class="w-12 h-12 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto text-xl">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <div>
+                <h3 class="text-base font-bold text-slate-900">Vols donar de baixa el llibre?</h3>
+                <p class="text-xs text-slate-500 mt-1">El llibre s'eliminarà permanentment del catàleg central i de la base de dades.</p>
+            </div>
+            <div class="flex items-center justify-center gap-3 pt-2">
+                <button type="button" onclick="cancelDeleteBook()" class="px-4 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50">Cancel·lar</button>
+                <button type="button" onclick="confirmDeleteBookAction()" class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold shadow">Sí, donar de baixa</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CUSTOM CONFIRMATION MODAL FOR DELETING USERS -->
+    <div id="modal-confirm-delete-user" class="fixed inset-0 z-60 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 text-center space-y-4">
+            <div class="w-12 h-12 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto text-xl">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <div>
+                <h3 class="text-base font-bold text-slate-900">Vols donar de baixa l'usuari?</h3>
+                <p class="text-xs text-slate-500 mt-1">L'usuari s'eliminarà permanentment del sistema de gestió.</p>
+            </div>
+            <div class="flex items-center justify-center gap-3 pt-2">
+                <button type="button" onclick="cancelDeleteUser()" class="px-4 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50">Cancel·lar</button>
+                <button type="button" onclick="confirmDeleteUserAction()" class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold shadow">Sí, donar de baixa</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- LOAN MODAL -->
+    <div id="modal-loan" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 space-y-6 my-8">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+                <h3 class="text-lg font-bold text-slate-900">Registrar Nou Préstec</h3>
+                <button type="button" onclick="closeLoanModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <form id="form-loan" onsubmit="saveLoan(event)" class="space-y-4">
+                <!-- Searchable User Selection -->
+                <div class="relative">
+                    <label class="block text-xs font-medium text-slate-700 uppercase mb-1">Cercar Usuari *</label>
+                    <input type="text" id="loan-user-search" oninput="filterLoanUsers()" placeholder="Escriu el nom, ID o curs de l'usuari..." class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" autocomplete="off" required>
+                    <input type="hidden" id="loan-user-id" required>
+                    <div id="loan-user-dropdown" class="absolute z-20 w-full bg-white border border-slate-200 rounded-xl shadow-lg mt-1 max-h-48 overflow-y-auto hidden">
+                        <!-- Dynamically populated suggestions -->
+                    </div>
+                </div>
+
+                <!-- Searchable Book Selection -->
+                <div class="relative">
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="block text-xs font-medium text-slate-700 uppercase">Cercar Llibre (Disponible) *</label>
+                        <button type="button" onclick="openQuickBookModal()" class="text-xs text-indigo-600 hover:text-indigo-800 font-semibold flex items-center gap-1">
+                            <i class="fa-solid fa-plus-circle"></i> Nou llibre ràpid
+                        </button>
+                    </div>
+                    <input type="text" id="loan-book-search" oninput="filterLoanBooks()" placeholder="Escriu títol, autor, ISBN o temàtica..." class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" autocomplete="off" required>
+                    <input type="hidden" id="loan-book-id" required>
+                    <div id="loan-book-dropdown" class="absolute z-20 w-full bg-white border border-slate-200 rounded-xl shadow-lg mt-1 max-h-48 overflow-y-auto hidden">
+                        <!-- Dynamically populated suggestions -->
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-700 uppercase mb-1">Data de Préstec *</label>
+                        <input type="date" id="loan-date" required class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-700 uppercase mb-1">Data Límit Devolució *</label>
+                        <input type="date" id="loan-due-date" required class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                </div>
+                <div class="flex justify-end space-x-3 pt-4 border-t border-slate-100">
+                    <button type="button" onclick="closeLoanModal()" class="px-4 py-2 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50">Cancel·lar</button>
+                    <button type="submit" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium shadow">Confirmar Préstec</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- QUICK BOOK MODAL FROM LOAN -->
+    <div id="modal-quick-book" class="fixed inset-0 z-60 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-6 my-8">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+                <h3 class="text-lg font-bold text-slate-900">Registrar Llibre Ràpid</h3>
+                <button type="button" onclick="closeQuickBookModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <form id="form-quick-book" onsubmit="saveQuickBook(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-medium text-slate-700 uppercase mb-1">Títol</label>
+                    <input type="text" id="quick-book-title" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Ex: L'Illa del Tresor">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-700 uppercase mb-1">Autor</label>
+                    <input type="text" id="quick-book-author" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Ex: Robert Louis Stevenson">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-700 uppercase mb-1">Temàtica</label>
+                        <select id="quick-book-category" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="Narrativa">Narrativa</option>
+                            <option value="Poesia">Poesia</option>
+                            <option value="Còmics">Còmics</option>
+                            <option value="Ciències">Ciències</option>
+                            <option value="Història">Història</option>
+                            <option value="Infantil">Infantil</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-700 uppercase mb-1">Nº Exemplars</label>
+                        <input type="number" id="quick-book-copies" min="1" value="1" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                </div>
+                <div class="flex justify-end space-x-3 pt-4 border-t border-slate-100">
+                    <button type="button" onclick="closeQuickBookModal()" class="px-4 py-2 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50">Cancel·lar</button>
+                    <button type="submit" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium shadow">Desar i Seleccionar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 mt-auto py-4 text-center text-xs text-slate-500">
+        <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+            <p>&copy; 2026 BiblioEscolar - Sistema de Gestió Bibliotecària Escolar</p>
+            <p class="text-slate-400">Compatible amb les especificacions d'ePèrgam i AbiesWeb</p>
+        </div>
+    </footer>
+
+    <!-- Application JavaScript -->
+    <script>
+        // Initial Mock Data
+        const initialBooks = [
+            { id: 'b1', title: 'El Petit Príncep', author: 'Antoine de Saint-Exupéry', isbn: '978-84-9838-140-5', category: 'Narrativa', level: '10-12 anys', shelf: 'Prestatgeria A-1', totalCopies: 4, availableCopies: 3, coverUrl: 'https://covers.openlibrary.org/b/isbn/9788498381405-M.jpg' },
+            { id: 'b2', title: "L'Odissea en Còmic", author: 'Homer / Adaptació', isbn: '978-84-2720-423-2', category: 'Còmics', level: '12-14 anys', shelf: 'Prestatgeria B-2', totalCopies: 2, availableCopies: 2, coverUrl: 'https://covers.openlibrary.org/b/isbn/9788427204232-M.jpg' },
+            { id: 'b3', title: 'Poemes per a infants', author: 'Gloria Fuertes', isbn: '978-84-2367-890-1', category: 'Poesia', level: '6-8 anys', shelf: 'Prestatgeria C-1', totalCopies: 3, availableCopies: 3, coverUrl: '' },
+            { id: 'b4', title: 'Història del Temps', author: 'Stephen Hawking', isbn: '978-84-0805-321-4', category: 'Ciències', level: 'Secundària', shelf: 'Prestatgeria D-4', totalCopies: 2, availableCopies: 1, coverUrl: 'https://covers.openlibrary.org/b/isbn/9788408053214-M.jpg' },
+            { id: 'b5', title: 'El Misteri de la Casa Encanterada', author: 'Enid Blyton', isbn: '978-84-0808-111-9', category: 'Narrativa', level: '8-10 anys', shelf: 'Prestatgeria A-2', totalCopies: 5, availableCopies: 5, coverUrl: '' }
+        ];
+
+        const initialUsers = [
+            { id: 'u1', code: 'ALU-001', name: 'Llúcia Fernández Pérez', role: 'Alumnat', course: '5è Primària A', email: 'llucia.fernandez@escola.cat' },
+            { id: 'u2', code: 'ALU-002', name: 'Mateu Gómez Sanz', role: 'Alumnat', course: '6è Primària B', email: 'mateu.gomez@escola.cat' },
+            { id: 'u3', code: 'PROF-01', name: 'Carles Martínez Ruiz', role: 'Professorat', course: 'Departament de Lletres', email: 'cmartinez@escola.cat' }
+        ];
+
+        const initialLoans = [
+            { id: 'l1', bookId: 'b1', userId: 'u1', loanDate: '2026-03-01', dueDate: '2026-03-15', returnDate: null, status: 'active' },
+            { id: 'l2', bookId: 'b4', userId: 'u3', loanDate: '2026-02-20', dueDate: '2026-03-06', returnDate: null, status: 'overdue' }
+        ];
+
+        // State variables
+        function readStoredArray(key, fallback) {
+            try {
+                const value = JSON.parse(localStorage.getItem(key) || 'null');
+                return Array.isArray(value) ? value : fallback;
+            } catch (error) {
+                console.warn(`No s'han pogut llegir les dades locals (${key}); s'utilitzen les dades inicials.`, error);
+                return fallback;
+            }
+        }
+        let books = readStoredArray('biblio_books', initialBooks);
+        let users = readStoredArray('biblio_users', initialUsers);
+        let loans = readStoredArray('biblio_loans', initialLoans);
+        let bookPendingDeleteId = null;
+        let userPendingDeleteId = null;
+
+        // Save to localStorage
+        function saveData() {
+            const keys = ['biblio_books', 'biblio_users', 'biblio_loans'];
+            const values = [JSON.stringify(books), JSON.stringify(users), JSON.stringify(loans)];
+            const previous = keys.map(key => localStorage.getItem(key));
+            try {
+                keys.forEach((key, i) => localStorage.setItem(key, values[i]));
+            } catch (error) {
+                keys.forEach((key, i) => {
+                    try {
+                        if (previous[i] === null) localStorage.removeItem(key);
+                        else localStorage.setItem(key, previous[i]);
+                    } catch (_) { /* el navegador pot haver bloquejat completament l'emmagatzematge */ }
+                });
+                throw error;
+            }
+        }
+
+        // Descàrrega comuna: un únic mecanisme per als dos formats.
+        // El clic a l'enllaç es produeix directament durant l'acció de l'usuari,
+        // cosa que ajuda a evitar bloquejos de descàrrega del navegador.
+        function downloadExportBlob(blob, filename) {
+            if (!blob || typeof blob.size !== 'number' || blob.size === 0) {
+                throw new Error('El fitxer generat és buit.');
+            }
+            const urlApi = window.URL || window.webkitURL;
+            if (!urlApi || typeof urlApi.createObjectURL !== 'function') {
+                throw new Error('Aquest navegador no permet crear l’enllaç de descàrrega.');
+            }
+            const objectUrl = urlApi.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = objectUrl;
+            link.download = filename;
+            link.setAttribute('aria-hidden', 'true');
+            link.style.cssText = 'position:fixed;left:-9999px;top:0;width:1px;height:1px;';
+            document.body.appendChild(link);
+            try {
+                // Executat síncronament com a resposta al clic real de l’usuari.
+                link.click();
+            } finally {
+                window.setTimeout(() => {
+                    if (link.parentNode) link.parentNode.removeChild(link);
+                    urlApi.revokeObjectURL(objectUrl);
+                }, 30000);
+            }
+        }
+
+        // Exporta una còpia JSON després de demanar confirmació.
+        function exportDataFile() {
+            if (!window.confirm('Voleu exportar totes les dades de BiblioEscolar en un fitxer JSON de còpia de seguretat?')) return;
+            try {
+                const dataToExport = {
+                    app: 'BiblioEscolar',
+                    exportDate: new Date().toISOString(),
+                    version: '1.2',
+                    books: books,
+                    users: users,
+                    loans: loans
+                };
+                const json = JSON.stringify(dataToExport, null, 2);
+                const blob = new Blob(['\uFEFF', json], { type: 'application/json;charset=utf-8' });
+                const dateStr = new Date().toISOString().slice(0, 10);
+                downloadExportBlob(blob, `biblio_escolar_backup_${dateStr}.json`);
+                showToast('S’ha iniciat l’exportació JSON. Si no apareix, revisa les descàrregues de Chrome.', 'success');
+            } catch (error) {
+                console.error('Error exportant les dades JSON:', error);
+                showToast('No s’ha pogut exportar el JSON. Revisa els permisos de descàrrega de Chrome.', 'error');
+                alert('No s’ha pogut preparar el fitxer JSON. Revisa la consola del navegador i els permisos de descàrrega.');
+            }
+        }
+
+        // Exporta llibres, usuaris i préstecs en tres fulls d'un fitxer Excel.
+        function exportExcelFile() {
+            if (!window.confirm('Voleu exportar totes les dades de BiblioEscolar a un fitxer Excel?')) return;
+            const dateStr = new Date().toISOString().slice(0, 10);
+            const sheets = [
+                { name: 'Llibres', data: books },
+                { name: 'Usuaris', data: users },
+                { name: 'Prestecs', data: loans }
+            ];
+            const safeCell = value => {
+                if (value === null || value === undefined) return '';
+                if (typeof value === 'object') return JSON.stringify(value);
+                return value;
+            };
+            try {
+                if (window.XLSX && XLSX.utils && XLSX.write) {
+                    const workbook = XLSX.utils.book_new();
+                    sheets.forEach(sheet => {
+                        const rows = sheet.data.map(record => {
+                            const out = {};
+                            Object.keys(record || {}).forEach(key => out[key] = safeCell(record[key]));
+                            return out;
+                        });
+                        const worksheet = XLSX.utils.json_to_sheet(rows.length ? rows : [{ Informacio: 'Sense registres' }]);
+                        worksheet['!cols'] = Object.keys(rows[0] || { Informacio: '' }).map(key => ({ wch: Math.min(36, Math.max(14, key.length + 3)) }));
+                        XLSX.utils.book_append_sheet(workbook, worksheet, sheet.name);
+                    });
+                    // Generem les dades nosaltres i fem servir el mateix mecanisme
+                    // de descàrrega que el JSON, en lloc de XLSX.writeFile().
+                    const xlsxData = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+                    const blob = new Blob([xlsxData], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                    downloadExportBlob(blob, `biblio_escolar_${dateStr}.xlsx`);
+                    showToast('S’ha iniciat l’exportació Excel. Si no apareix, revisa les descàrregues de Chrome.', 'success');
+                    return;
+                }
+
+                // Alternativa integrada si la biblioteca XLSX no està disponible:
+                // crea un llibre XML de diversos fulls que Excel pot obrir.
+                const xmlEscape = value => String(safeCell(value)).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+                const worksheetXml = sheet => {
+                    const rows = sheet.data || [];
+                    const headers = [...new Set(rows.flatMap(row => Object.keys(row || {})))];
+                    const matrix = [headers.length ? headers : ['Informació'], ...rows.map(row => headers.map(key => safeCell(row[key])))];
+                    if (!rows.length) matrix.push(['Sense registres']);
+                    return `<Worksheet ss:Name="${xmlEscape(sheet.name)}"><Table>${matrix.map((row, ri) => `<Row>${row.map(value => {
+                        const v = safeCell(value);
+                        const type = typeof v === 'number' && Number.isFinite(v) ? 'Number' : (typeof v === 'boolean' ? 'Boolean' : 'String');
+                        const content = type === 'Boolean' ? (v ? '1' : '0') : xmlEscape(v);
+                        return `<Cell${ri === 0 ? ' ss:StyleID="Header"' : ''}><Data ss:Type="${type}">${content}</Data></Cell>`;
+                    }).join('')}</Row>`).join('')}</Table><WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel"><FreezePanes/><FrozenNoSplit/><SplitHorizontal>1</SplitHorizontal><TopRowBottomPane>1</TopRowBottomPane></WorksheetOptions></Worksheet>`;
+                };
+                const xml = `<?xml version="1.0" encoding="UTF-8"?><?mso-application progid="Excel.Sheet"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Styles><Style ss:ID="Header"><Font ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#244B3F" ss:Pattern="Solid"/></Style></Styles>${sheets.map(worksheetXml).join('')}</Workbook>`;
+                const blob = new Blob(['\uFEFF', xml], { type: 'application/vnd.ms-excel;charset=utf-8' });
+                downloadExportBlob(blob, `biblio_escolar_${dateStr}.xls`);
+                showToast('S’ha iniciat l’exportació compatible amb Excel. Revisa les descàrregues de Chrome si no apareix.', 'success');
+            } catch (error) {
+                console.error('Error exportant a Excel:', error);
+                showToast('No s’ha pogut exportar a Excel. Revisa els permisos de descàrrega de Chrome.', 'error');
+                alert('No s’ha pogut preparar el fitxer Excel. Revisa la consola del navegador i els permisos de descàrrega.');
+            }
+        }
+
+        // Importa i valida primer tot el JSON; només substitueix les dades quan és vàlid.
+        async function importDataFile(event) {
+            const input = event && event.target ? event.target : document.getElementById('import-file-input');
+            const file = input && input.files ? input.files[0] : null;
+            if (!file) return;
+            try {
+                if (file.size > 50 * 1024 * 1024) throw new Error('El fitxer supera el límit de 50 MB.');
+                const content = await file.text();
+                const parsed = JSON.parse(content.replace(/^\uFEFF/, ''));
+                const imported = parsed && parsed.data && typeof parsed.data === 'object' ? parsed.data : parsed;
+                if (!imported || !Array.isArray(imported.books) || !Array.isArray(imported.users) || !Array.isArray(imported.loans)) {
+                    throw new Error('El JSON ha de contenir les llistes books, users i loans.');
+                }
+                const validRecords = (items, required, label) => items.every((item, index) => {
+                    if (!item || typeof item !== 'object' || Array.isArray(item)) throw new Error(`${label}: registre ${index + 1} invàlid.`);
+                    for (const key of required) if (item[key] === undefined || item[key] === null || item[key] === '') throw new Error(`${label}: falta el camp «${key}» al registre ${index + 1}.`);
+                    return true;
+                });
+                validRecords(imported.books, ['id', 'title'], 'Llibres');
+                validRecords(imported.users, ['id', 'name'], 'Usuaris');
+                validRecords(imported.loans, ['id', 'bookId', 'userId', 'loanDate', 'dueDate', 'status'], 'Préstecs');
+                const uniqueIds = (items, label) => {
+                    const ids = items.map(x => String(x.id));
+                    if (new Set(ids).size !== ids.length) throw new Error(`Hi ha identificadors duplicats a ${label.toLowerCase()}.`);
+                };
+                uniqueIds(imported.books, 'Llibres');
+                uniqueIds(imported.users, 'Usuaris');
+                uniqueIds(imported.loans, 'Préstecs');
+                const bookIds = new Set(imported.books.map(x => String(x.id)));
+                const userIds = new Set(imported.users.map(x => String(x.id)));
+                imported.loans.forEach((loan, i) => {
+                    if (!bookIds.has(String(loan.bookId))) throw new Error(`El préstec ${i + 1} fa referència a un llibre inexistent.`);
+                    if (!userIds.has(String(loan.userId))) throw new Error(`El préstec ${i + 1} fa referència a un usuari inexistent.`);
+                    if (!['active', 'overdue', 'returned'].includes(loan.status)) throw new Error(`Estat invàlid al préstec ${i + 1}.`);
+                });
+                imported.books.forEach((book, i) => {
+                    const total = Number(book.totalCopies);
+                    if (!Number.isFinite(total) || total < 0) throw new Error(`Nombre d’exemplars invàlid al llibre ${i + 1}.`);
+                });
+
+                const summary = `El fitxer conté ${imported.books.length} llibres, ${imported.users.length} usuaris i ${imported.loans.length} préstecs.\n\nLa importació substituirà les dades actuals d’aquest navegador. És recomanable exportar-ne una còpia abans de continuar.\n\nVols continuar?`;
+                if (!window.confirm(summary)) return;
+
+                // Clonem les dades per no mantenir referències a l'objecte llegit.
+                const nextBooks = JSON.parse(JSON.stringify(imported.books));
+                const nextUsers = JSON.parse(JSON.stringify(imported.users));
+                const nextLoans = JSON.parse(JSON.stringify(imported.loans));
+                // Normalitza camps opcionals i recalcula l'estoc a partir dels préstecs oberts.
+                nextBooks.forEach(book => {
+                    book.totalCopies = Number(book.totalCopies);
+                    const openLoans = nextLoans.filter(loan => String(loan.bookId) === String(book.id) && loan.status !== 'returned').length;
+                    book.availableCopies = Math.max(0, book.totalCopies - openLoans);
+                    if (book.availableCopies > book.totalCopies) book.availableCopies = book.totalCopies;
+                });
+                const oldState = { books, users, loans };
+                books = nextBooks; users = nextUsers; loans = nextLoans;
+                try {
+                    saveData();
+                } catch (storageError) {
+                    books = oldState.books; users = oldState.users; loans = oldState.loans;
+                    throw new Error('No s’han pogut desar les dades al navegador (pot ser que l’emmagatzematge estigui ple o bloquejat). Les dades en memòria no s’han substituït.');
+                }
+                renderDashboard(); renderBooks(); renderUsers(); renderLoans();
+                showToast(`Importació completada: ${books.length} llibres, ${users.length} usuaris i ${loans.length} préstecs.`, 'success');
+            } catch (error) {
+                console.error('Error important les dades:', error);
+                showToast(error.message && error.message.length < 180 ? `No s’ha pogut importar: ${error.message}` : 'No s’ha pogut importar: el fitxer JSON no és vàlid o està malmès.', 'error');
+            } finally {
+                if (input) input.value = '';
+            }
+        }
+
+        // Toast Notification System
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+            const toast = document.createElement('div');
+            
+            const bgClass = type === 'success' ? 'bg-emerald-600' : (type === 'error' ? 'bg-rose-600' : 'bg-indigo-600');
+            toast.className = `${bgClass} text-white px-4 py-3 rounded-xl shadow-lg text-sm font-medium flex items-center justify-between gap-4 transition transform translate-y-2 opacity-0 duration-300`;
+            
+            let icon = type === 'success' ? 'fa-circle-check' : (type === 'error' ? 'fa-circle-exclamation' : 'fa-circle-info');
+            toast.innerHTML = `<div class="flex items-center gap-2"><i class="fa-solid ${icon}"></i><span>${message}</span></div>`;
+            
+            container.appendChild(toast);
+            setTimeout(() => { toast.classList.remove('translate-y-2', 'opacity-0'); }, 10);
+            
+            setTimeout(() => {
+                toast.classList.add('translate-y-2', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // Tab Switching
+        function switchTab(tabId) {
+            const views = ['dashboard', 'books', 'users', 'loans'];
+            views.forEach(v => {
+                const el = document.getElementById(`view-${v}`);
+                if (el) el.classList.add('hidden');
+            });
+
+            const targetView = document.getElementById(`view-${tabId}`);
+            if (targetView) targetView.classList.remove('hidden');
+
+            // Update desktop nav buttons
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.className = "nav-btn px-3 py-2 rounded-lg text-sm font-medium transition text-indigo-100 hover:bg-indigo-600 flex items-center gap-2";
+            });
+            const activeBtn = document.getElementById(`nav-${tabId}`);
+            if (activeBtn) {
+                activeBtn.className = "nav-btn px-3 py-2 rounded-lg text-sm font-medium transition bg-indigo-800 text-white shadow-sm flex items-center gap-2";
+            }
+
+            // Close mobile menu if open
+            const mobileMenu = document.getElementById('mobile-menu');
+            if (mobileMenu) mobileMenu.classList.add('hidden');
+
+            // Render view specific data
+            if (tabId === 'dashboard') renderDashboard();
+            if (tabId === 'books') renderBooks();
+            if (tabId === 'users') renderUsers();
+            if (tabId === 'loans') renderLoans();
+        }
+
+        // Mobile menu toggle listener
+        const menuToggleBtn = document.getElementById('menu-toggle');
+        if (menuToggleBtn) {
+            menuToggleBtn.addEventListener('click', () => {
+                const menu = document.getElementById('mobile-menu');
+                if (menu) menu.classList.toggle('hidden');
+            });
+        }
+
+        // Render Dashboard
+        function renderDashboard() {
+            checkOverdueLoans();
+
+            const totalBooks = books.reduce((acc, b) => acc + parseInt(b.totalCopies || 0), 0);
+            const totalUsers = users.length;
+            const activeLoans = loans.filter(l => l.status === 'active' || l.status === 'overdue').length;
+            const overdueLoans = loans.filter(l => l.status === 'overdue').length;
+
+            const statBooks = document.getElementById('stat-total-books');
+            const statUsers = document.getElementById('stat-total-users');
+            const statActive = document.getElementById('stat-active-loans');
+            const statOverdue = document.getElementById('stat-overdue-loans');
+
+            if (statBooks) statBooks.textContent = totalBooks;
+            if (statUsers) statUsers.textContent = totalUsers;
+            if (statActive) statActive.textContent = activeLoans;
+            if (statOverdue) statOverdue.textContent = overdueLoans;
+
+            // Render Recent Loans
+            const recentLoansEl = document.getElementById('dashboard-recent-loans');
+            if (recentLoansEl) {
+                recentLoansEl.innerHTML = '';
+                const sortedLoans = [...loans].reverse().slice(0, 5);
+                
+                if (sortedLoans.length === 0) {
+                    recentLoansEl.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-slate-400 text-xs">No hi ha préstecs recents</td></tr>`;
+                } else {
+                    sortedLoans.forEach(l => {
+                        const book = books.find(b => b.id === l.bookId) || { title: 'Llibre desconegut' };
+                        const user = users.find(u => u.id === l.userId) || { name: 'Usuari desconegut' };
+                        
+                        let statusBadge = '';
+                        if (l.status === 'returned') statusBadge = '<span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700">Retornat</span>';
+                        else if (l.status === 'overdue') statusBadge = '<span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700">Retardat</span>';
+                        else statusBadge = '<span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700">Pendent</span>';
+
+                        recentLoansEl.innerHTML += `
+                            <tr class="hover:bg-slate-50/50">
+                                <td class="p-3 font-medium text-slate-900 truncate max-w-[150px]">${book.title}</td>
+                                <td class="p-3 text-slate-600 truncate max-w-[120px]">${user.name}</td>
+                                <td class="p-3 text-slate-500 text-xs">${l.dueDate}</td>
+                                <td class="p-3">${statusBadge}</td>
+                            </tr>
+                        `;
+                    });
+                }
+            }
+
+            // Render Recent Books
+            const recentBooksEl = document.getElementById('dashboard-recent-books');
+            if (recentBooksEl) {
+                recentBooksEl.innerHTML = '';
+                const sortedBooks = [...books].reverse().slice(0, 5);
+                
+                sortedBooks.forEach(b => {
+                    const isAvailable = b.availableCopies > 0;
+                    const statusClass = isAvailable ? 'text-emerald-600' : 'text-rose-600';
+                    recentBooksEl.innerHTML += `
+                        <tr class="hover:bg-slate-50/50 cursor-pointer" onclick="viewBookHistory('${b.id}')">
+                            <td class="p-3 font-medium text-slate-900 truncate max-w-[150px] hover:text-indigo-600">${b.title}</td>
+                            <td class="p-3 text-slate-600">${b.category || 'General'}</td>
+                            <td class="p-3 text-slate-500">${b.shelf || 'General'}</td>
+                            <td class="p-3 font-semibold ${statusClass}">${b.availableCopies}/${b.totalCopies}</td>
+                        </tr>
+                    `;
+                });
+            }
+        }
+
+        // Check overdue status automatically based on current date
+        function checkOverdueLoans() {
+            const today = new Date().toISOString().split('T')[0];
+            let updated = false;
+            loans.forEach(l => {
+                if (l.status === 'active' && l.dueDate < today) {
+                    l.status = 'overdue';
+                    updated = true;
+                }
+            });
+            if (updated) saveData();
+        }
+
+        // BOOK MANAGEMENT
+        function renderBooks() {
+            const searchEl = document.getElementById('book-search');
+            const categoryEl = document.getElementById('filter-book-category');
+            const statusEl = document.getElementById('filter-book-status');
+            const tbody = document.getElementById('books-table-body');
+            const emptyState = document.getElementById('books-empty');
+
+            if (!tbody) return;
+            tbody.innerHTML = '';
+
+            const search = searchEl ? searchEl.value.toLowerCase() : '';
+            const categoryFilter = categoryEl ? categoryEl.value : '';
+            const statusFilter = statusEl ? statusEl.value : '';
+
+            const filtered = books.filter(b => {
+                const matchesSearch = b.title.toLowerCase().includes(search) || 
+                                      b.author.toLowerCase().includes(search) || 
+                                      b.isbn.toLowerCase().includes(search) || 
+                                      b.category.toLowerCase().includes(search);
+                const matchesCategory = categoryFilter === '' || b.category === categoryFilter;
+                
+                let matchesStatus = true;
+                if (statusFilter === 'available') {
+                    matchesStatus = b.availableCopies > 0;
+                } else if (statusFilter === 'borrowed') {
+                    matchesStatus = b.availableCopies < b.totalCopies;
+                } else if (statusFilter === 'out') {
+                    matchesStatus = b.availableCopies === 0;
+                }
+
+                return matchesSearch && matchesCategory && matchesStatus;
+            });
+
+            if (filtered.length === 0) {
+                if (emptyState) emptyState.classList.remove('hidden');
+            } else {
+                if (emptyState) emptyState.classList.add('hidden');
+                filtered.forEach(b => {
+                    let statusBadge = '';
+                    if (b.availableCopies === b.totalCopies) {
+                        statusBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Disponible (${b.availableCopies}/${b.totalCopies})
+                        </span>`;
+                    } else if (b.availableCopies > 0) {
+                        statusBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                            <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> En préstec (${b.availableCopies}/${b.totalCopies} disp.)
+                        </span>`;
+                    } else {
+                        statusBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+                            <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Prestat (0/${b.totalCopies})
+                        </span>`;
+                    }
+
+                    const coverImg = b.coverUrl 
+                        ? `<img src="${b.coverUrl}" alt="Portada" class="w-10 h-14 object-cover rounded shadow-sm border border-slate-200" onerror="this.onerror=null; this.src='https://placehold.co/40x56/e2e8f0/64748b?text=📖';">`
+                        : `<div class="w-10 h-14 bg-slate-100 rounded flex items-center justify-center text-slate-400 text-xs border border-slate-200"><i class="fa-solid fa-book"></i></div>`;
+
+                    tbody.innerHTML += `
+                        <tr class="hover:bg-slate-50/80 transition group">
+                            <td class="p-4 cursor-pointer" onclick="viewBookHistory('${b.id}')">${coverImg}</td>
+                            <td class="p-4 cursor-pointer" onclick="viewBookHistory('${b.id}')">
+                                <div class="font-bold text-slate-900 group-hover:text-indigo-600 transition flex items-center gap-1.5">
+                                    <span>${b.title}</span>
+                                    <i class="fa-solid fa-clock-rotate-left text-slate-300 group-hover:text-indigo-500 text-xs" title="Fes clic per veure l'historial"></i>
+                                </div>
+                                <div class="text-xs text-slate-500">${b.author} &bull; ISBN: ${b.isbn}</div>
+                            </td>
+                            <td class="p-4 text-slate-600"><span class="px-2 py-1 bg-slate-100 rounded-lg text-xs font-medium">${b.category}</span></td>
+                            <td class="p-4 text-slate-600 text-xs">${b.level}</td>
+                            <td class="p-4 text-slate-600 text-xs"><i class="fa-solid fa-location-dot text-indigo-500 mr-1"></i>${b.shelf}</td>
+                            <td class="p-4 cursor-pointer" onclick="viewBookHistory('${b.id}')">${statusBadge}</td>
+                            <td class="p-4 text-right space-x-1 sm:space-x-2">
+                                <button type="button" onclick="viewBookHistory('${b.id}')" class="text-amber-600 hover:text-amber-800 p-1.5 rounded-lg hover:bg-amber-50 transition" title="Veure historial de lectors"><i class="fa-solid fa-clock-rotate-left"></i></button>
+                                <button type="button" onclick="editBook('${b.id}')" class="text-indigo-600 hover:text-indigo-800 p-1.5 rounded-lg hover:bg-indigo-50 transition" title="Editar informació"><i class="fa-solid fa-pen"></i></button>
+                                <button type="button" onclick="deleteBook('${b.id}')" class="text-rose-500 hover:text-rose-700 p-1.5 rounded-lg hover:bg-rose-50 transition" title="Donar de baixa"><i class="fa-solid fa-trash"></i></button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+        }
+
+        // VIEW BOOK LOAN HISTORY MODAL
+        function viewBookHistory(bookId) {
+            const book = books.find(b => b.id === bookId);
+            if (!book) return;
+
+            const titleEl = document.getElementById('book-history-title');
+            const subtitleEl = document.getElementById('book-history-subtitle');
+            const coverEl = document.getElementById('book-history-cover');
+
+            if (titleEl) titleEl.textContent = book.title;
+            if (subtitleEl) subtitleEl.textContent = `Autor: ${book.author} | ISBN: ${book.isbn} | Estoc: ${book.availableCopies}/${book.totalCopies} disponibilitat`;
+
+            if (coverEl) {
+                if (book.coverUrl) {
+                    coverEl.src = book.coverUrl;
+                    coverEl.classList.remove('hidden');
+                } else {
+                    coverEl.classList.add('hidden');
+                }
+            }
+
+            const bookLoans = loans.filter(l => l.bookId === bookId);
+            const tbody = document.getElementById('book-history-table-body');
+            const emptyState = document.getElementById('book-history-empty');
+
+            if (!tbody) return;
+            tbody.innerHTML = '';
+
+            if (bookLoans.length === 0) {
+                if (emptyState) emptyState.classList.remove('hidden');
+            } else {
+                if (emptyState) emptyState.classList.add('hidden');
+                bookLoans.slice().reverse().forEach(l => {
+                    const user = users.find(u => u.id === l.userId) || { name: 'Usuari desconegut o eliminat', course: '-', role: '-' };
+                    let statusBadge = '';
+
+                    if (l.status === 'returned') {
+                        statusBadge = '<span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700">Retornat</span>';
+                    } else if (l.status === 'overdue') {
+                        statusBadge = '<span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700">En préstec (Retardat)</span>';
+                    } else {
+                        statusBadge = '<span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700">En préstec (Actiu)</span>';
+                    }
+
+                    tbody.innerHTML += `
+                        <tr class="hover:bg-slate-50/70">
+                            <td class="p-3 font-semibold text-slate-900">${user.name}</td>
+                            <td class="p-3 text-slate-600 text-xs">${user.course} <span class="text-slate-400">(${user.role})</span></td>
+                            <td class="p-3 text-slate-600 text-xs">${l.loanDate}</td>
+                            <td class="p-3 text-slate-600 text-xs">${l.returnDate ? l.returnDate : '-'}</td>
+                            <td class="p-3">${statusBadge}</td>
+                        </tr>
+                    `;
+                });
+            }
+
+            const modalHistory = document.getElementById('modal-book-history');
+            if (modalHistory) modalHistory.classList.remove('hidden');
+        }
+
+        function closeBookHistoryModal() {
+            const modalHistory = document.getElementById('modal-book-history');
+            if (modalHistory) modalHistory.classList.add('hidden');
+        }
+
+        function openBookModal(bookId = null) {
+            const form = document.getElementById('form-book');
+            if (form) form.reset();
+            
+            const bookIdInput = document.getElementById('book-id');
+            const webQuery = document.getElementById('book-web-query');
+            const copiesInput = document.getElementById('book-copies');
+            if (bookIdInput) bookIdInput.value = '';
+            if (webQuery) webQuery.value = '';
+            if (copiesInput) copiesInput.value = '1';
+            
+            const deleteBtn = document.getElementById('btn-delete-book-modal');
+            const webSearchWrapper = document.getElementById('book-web-search-wrapper');
+
+            if (bookId) {
+                const modalTitle = document.getElementById('book-modal-title');
+                if (modalTitle) modalTitle.textContent = 'Editar Llibre';
+                if (deleteBtn) deleteBtn.classList.remove('hidden');
+                if (webSearchWrapper) webSearchWrapper.classList.add('hidden');
+
+                const b = books.find(item => item.id === bookId);
+                if (b) {
+                    if (bookIdInput) bookIdInput.value = b.id;
+                    document.getElementById('book-title').value = b.title || '';
+                    document.getElementById('book-author').value = b.author || '';
+                    document.getElementById('book-isbn').value = b.isbn || '';
+                    document.getElementById('book-category').value = b.category || '';
+                    document.getElementById('book-level').value = b.level || '';
+                    document.getElementById('book-shelf').value = b.shelf || '';
+                    if (copiesInput) copiesInput.value = b.totalCopies || 1;
+                    document.getElementById('book-cover').value = b.coverUrl || '';
+                }
+            } else {
+                const modalTitle = document.getElementById('book-modal-title');
+                if (modalTitle) modalTitle.textContent = 'Registrar Nou Llibre';
+                if (deleteBtn) deleteBtn.classList.add('hidden');
+                if (webSearchWrapper) webSearchWrapper.classList.remove('hidden');
+            }
+            const modalBook = document.getElementById('modal-book');
+            if (modalBook) modalBook.classList.remove('hidden');
+        }
+
+        function closeBookModal() {
+            const modalBook = document.getElementById('modal-book');
+            if (modalBook) modalBook.classList.add('hidden');
+        }
+
+        // Web Search Integration for Books (Open Library API)
+        async function searchBookOnWeb() {
+            const queryInput = document.getElementById('book-web-query');
+            if (!queryInput) return;
+            const query = queryInput.value.trim();
+            if (!query) {
+                showToast('Introdueix un títol, autor o ISBN per cercar', 'error');
+                return;
+            }
+
+            showToast('Consultant bases de dades bibliogràfiques...', 'info');
+
+            try {
+                let url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=6`;
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (data.docs && data.docs.length > 0) {
+                    const resultsContainer = document.getElementById('web-search-results-container');
+                    const resultsList = document.getElementById('web-search-results-list');
+                    if (!resultsList || !resultsContainer) return;
+                    resultsList.innerHTML = '';
+
+                    data.docs.forEach((doc) => {
+                        const title = doc.title || 'Títol desconegut';
+                        const author = doc.author_name ? doc.author_name.join(', ') : 'Autor desconegut';
+                        const year = doc.first_publish_year ? `(${doc.first_publish_year})` : '';
+                        const isbn = doc.isbn && doc.isbn.length > 0 ? doc.isbn[0] : ('978-' + Math.floor(Math.random() * 899999999 + 100000000));
+                        const coverId = doc.cover_i ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg` : (doc.isbn && doc.isbn[0] ? `https://covers.openlibrary.org/b/isbn/${doc.isbn[0]}-M.jpg` : '');
+                        
+                        let category = 'Narrativa';
+                        if (doc.subject) {
+                            const subjStr = doc.subject.join(' ').toLowerCase();
+                            if (subjStr.includes('comic') || subjStr.includes('graphic novel')) category = 'Còmics';
+                            else if (subjStr.includes('poetry') || subjStr.includes('poesia')) category = 'Poesia';
+                            else if (subjStr.includes('science') || subjStr.includes('ciencia')) category = 'Ciències';
+                            else if (subjStr.includes('history') || subjStr.includes('historia')) category = 'Història';
+                            else if (subjStr.includes('juvenile') || subjStr.includes('children') || subjStr.includes('infantil')) category = 'Infantil';
+                        }
+
+                        const itemDiv = document.createElement('div');
+                        itemDiv.className = 'p-2 hover:bg-indigo-50 rounded-lg cursor-pointer transition text-xs flex items-center gap-3';
+                        itemDiv.innerHTML = `
+                            <img src="${coverId || 'https://placehold.co/30x40/e2e8f0/64748b?text=📖'}" class="w-8 h-10 object-cover rounded shrink-0 border border-slate-200" onerror="this.src='https://placehold.co/30x40/e2e8f0/64748b?text=📖';">
+                            <div>
+                                <div class="font-bold text-slate-900">${title} ${year}</div>
+                                <div class="text-slate-500">${author} &bull; ISBN: ${isbn}</div>
+                            </div>
+                        `;
+                        itemDiv.onclick = () => {
+                            applyWebBookResult({
+                                title,
+                                author,
+                                isbn,
+                                category,
+                                coverUrl: coverId
+                            });
+                            resultsContainer.classList.add('hidden');
+                        };
+                        resultsList.appendChild(itemDiv);
+                    });
+
+                    resultsContainer.classList.remove('hidden');
+                    showToast("S'han trobat diversos resultats. Selecciona'n un:", 'success');
+                } else {
+                    showToast("No s'han trobat resultats en línia per a aquesta cerca", 'error');
+                }
+            } catch (error) {
+                console.error(error);
+                showToast('Error de connexió amb el servei de cerca bibliogràfica', 'error');
+            }
+        }
+
+        function applyWebBookResult(bookData) {
+            document.getElementById('book-title').value = bookData.title;
+            document.getElementById('book-author').value = bookData.author;
+            document.getElementById('book-isbn').value = bookData.isbn;
+            document.getElementById('book-category').value = bookData.category;
+            document.getElementById('book-level').value = 'General / Primària-ESO';
+            document.getElementById('book-shelf').value = 'Prestatgeria General';
+            document.getElementById('book-copies').value = '1';
+            document.getElementById('book-cover').value = bookData.coverUrl || '';
+            showToast('Llibre seleccionat i camps autocompletats!', 'success');
+        }
+
+        function saveBook(e) {
+            e.preventDefault();
+            const id = document.getElementById('book-id').value;
+            const title = document.getElementById('book-title').value.trim() || 'Sense títol';
+            const author = document.getElementById('book-author').value.trim() || 'Desconegut';
+            const isbn = document.getElementById('book-isbn').value.trim() || 'S/N';
+            const category = document.getElementById('book-category').value || 'Narrativa';
+            const level = document.getElementById('book-level').value.trim() || 'General';
+            const shelf = document.getElementById('book-shelf').value.trim() || 'Sense assignar';
+            const copiesInput = document.getElementById('book-copies').value;
+            const totalCopies = copiesInput !== '' ? parseInt(copiesInput) : 1;
+            const coverUrl = document.getElementById('book-cover').value.trim() || '';
+
+            if (id) {
+                const book = books.find(b => b.id === id);
+                if (book) {
+                    const diff = totalCopies - book.totalCopies;
+                    book.title = title;
+                    book.author = author;
+                    book.isbn = isbn;
+                    book.category = category;
+                    book.level = level;
+                    book.shelf = shelf;
+                    book.totalCopies = totalCopies;
+                    book.availableCopies = Math.max(0, book.availableCopies + diff);
+                    book.coverUrl = coverUrl;
+                    showToast('Llibre actualitzat correctament', 'success');
+                }
+            } else {
+                const newBook = {
+                    id: 'b_' + Date.now(),
+                    title, author, isbn, category, level, shelf,
+                    totalCopies,
+                    availableCopies: totalCopies,
+                    coverUrl
+                };
+                books.push(newBook);
+                showToast('Llibre registrat amb èxit', 'success');
+            }
+
+            saveData();
+            closeBookModal();
+            renderBooks();
+            renderDashboard();
+        }
+
+        function editBook(id) {
+            openBookModal(id);
+        }
+
+        // Trigger custom confirmation modal for deleting a book
+        function deleteBook(id) {
+            bookPendingDeleteId = id;
+            const modalConfirm = document.getElementById('modal-confirm-delete');
+            if (modalConfirm) modalConfirm.classList.remove('hidden');
+        }
+
+        function cancelDeleteBook() {
+            bookPendingDeleteId = null;
+            const modalConfirm = document.getElementById('modal-confirm-delete');
+            if (modalConfirm) modalConfirm.classList.add('hidden');
+        }
+
+        function confirmDeleteBookAction() {
+            if (!bookPendingDeleteId) return;
+
+            const bookId = bookPendingDeleteId;
+            books = books.filter(b => b.id !== bookId);
+            loans = loans.filter(l => l.bookId !== bookId);
+
+            saveData();
+            renderBooks();
+            renderDashboard();
+
+            bookPendingDeleteId = null;
+            const modalConfirm = document.getElementById('modal-confirm-delete');
+            if (modalConfirm) modalConfirm.classList.add('hidden');
+            showToast('El llibre ha estat donat de baixa permanentment del catàleg', 'info');
+        }
+
+        function deleteBookFromModal() {
+            const id = document.getElementById('book-id').value;
+            if (!id) return;
+            closeBookModal();
+            deleteBook(id);
+        }
+
+        // QUICK BOOK REGISTRATION FROM LOAN MODAL
+        function openQuickBookModal() {
+            const form = document.getElementById('form-quick-book');
+            if (form) form.reset();
+            const modalQuick = document.getElementById('modal-quick-book');
+            if (modalQuick) modalQuick.classList.remove('hidden');
+        }
+
+        function closeQuickBookModal() {
+            const modalQuick = document.getElementById('modal-quick-book');
+            if (modalQuick) modalQuick.classList.add('hidden');
+        }
+
+        function saveQuickBook(e) {
+            e.preventDefault();
+            const title = document.getElementById('quick-book-title').value.trim() || 'Llibre Nou';
+            const author = document.getElementById('quick-book-author').value.trim() || 'Desconegut';
+            const category = document.getElementById('quick-book-category').value || 'Narrativa';
+            const copiesInput = document.getElementById('quick-book-copies').value;
+            const totalCopies = copiesInput !== '' ? parseInt(copiesInput) : 1;
+
+            const newBook = {
+                id: 'b_' + Date.now(),
+                title,
+                author,
+                isbn: 'S/N-' + Math.floor(Math.random() * 8999 + 1000),
+                category,
+                level: 'General',
+                shelf: 'Prestatgeria General',
+                totalCopies,
+                availableCopies: totalCopies,
+                coverUrl: ''
+            };
+
+            books.push(newBook);
+            saveData();
+            closeQuickBookModal();
+            
+            selectLoanBook(newBook.id, `${newBook.title} (${newBook.author})`);
+            showToast('Llibre registrat i seleccionat', 'success');
+        }
+
+        // USER MANAGEMENT
+        function renderUsers() {
+            const searchEl = document.getElementById('user-search');
+            const roleEl = document.getElementById('filter-user-role');
+            const tbody = document.getElementById('users-table-body');
+            const emptyState = document.getElementById('users-empty');
+
+            if (!tbody) return;
+            tbody.innerHTML = '';
+
+            const search = searchEl ? searchEl.value.toLowerCase() : '';
+            const roleFilter = roleEl ? roleEl.value : '';
+
+            const filtered = users.filter(u => {
+                const matchesSearch = u.name.toLowerCase().includes(search) || 
+                                      u.code.toLowerCase().includes(search) || 
+                                      u.course.toLowerCase().includes(search) || 
+                                      u.email.toLowerCase().includes(search);
+                const matchesRole = roleFilter === '' || u.role === roleFilter;
+                return matchesSearch && matchesRole;
+            });
+
+            if (filtered.length === 0) {
+                if (emptyState) emptyState.classList.remove('hidden');
+            } else {
+                if (emptyState) emptyState.classList.add('hidden');
+                filtered.forEach(u => {
+                    const activeLoansCount = loans.filter(l => l.userId === u.id && l.status !== 'returned').length;
+                    
+                    let roleBadge = '';
+                    if (u.role === 'Professorat') roleBadge = '<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-50 text-purple-700">Professorat</span>';
+                    else if (u.role === 'Personal') roleBadge = '<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700">Personal</span>';
+                    else roleBadge = '<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700">Alumnat</span>';
+
+                    tbody.innerHTML += `
+                        <tr class="hover:bg-slate-50/70 transition">
+                            <td class="p-4">
+                                <div class="font-bold text-slate-900">${u.name}</div>
+                                <div class="text-xs text-slate-500">ID: ${u.code}</div>
+                            </td>
+                            <td class="p-4">${roleBadge}</td>
+                            <td class="p-4 text-slate-600 text-xs font-medium">${u.course}</td>
+                            <td class="p-4 text-slate-600 text-xs"><i class="fa-solid fa-envelope text-indigo-400 mr-1"></i>${u.email}</td>
+                            <td class="p-4 font-semibold text-slate-800">${activeLoansCount} actiu(s)</td>
+                            <td class="p-4 text-right space-x-2">
+                                <button type="button" onclick="viewUserHistory('${u.id}')" class="text-amber-600 hover:text-amber-800 p-1.5 rounded-lg hover:bg-amber-50 transition" title="Veure historial de lectura"><i class="fa-solid fa-book-reader"></i></button>
+                                <button type="button" onclick="editUser('${u.id}')" class="text-indigo-600 hover:text-indigo-800 p-1.5 rounded-lg hover:bg-indigo-50 transition" title="Editar"><i class="fa-solid fa-pen"></i></button>
+                                <button type="button" onclick="deleteUser('${u.id}')" class="text-rose-500 hover:text-rose-700 p-1.5 rounded-lg hover:bg-rose-50 transition" title="Donar de baixa"><i class="fa-solid fa-user-xmark"></i></button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+        }
+
+        function openUserModal(userId = null) {
+            const form = document.getElementById('form-user');
+            if (form) form.reset();
+            const hiddenId = document.getElementById('user-hidden-id');
+            if (hiddenId) hiddenId.value = '';
+
+            if (userId) {
+                const modalTitle = document.getElementById('user-modal-title');
+                if (modalTitle) modalTitle.textContent = 'Editar Usuari';
+                const u = users.find(item => item.id === userId);
+                if (u) {
+                    if (hiddenId) hiddenId.value = u.id;
+                    document.getElementById('user-code').value = u.code || '';
+                    document.getElementById('user-role').value = u.role || 'Alumnat';
+                    document.getElementById('user-name').value = u.name || '';
+                    document.getElementById('user-course').value = u.course || '';
+                    document.getElementById('user-email').value = u.email || '';
+                }
+            } else {
+                const modalTitle = document.getElementById('user-modal-title');
+                if (modalTitle) modalTitle.textContent = 'Registrar Nou Usuari';
+            }
+            const modalUser = document.getElementById('modal-user');
+            if (modalUser) modalUser.classList.remove('hidden');
+        }
+
+        function closeUserModal() {
+            const modalUser = document.getElementById('modal-user');
+            if (modalUser) modalUser.classList.add('hidden');
+        }
+
+        function viewUserHistory(userId) {
+            const user = users.find(u => u.id === userId);
+            if (!user) return;
+
+            document.getElementById('history-modal-title').textContent = `Historial de Lectura: ${user.name}`;
+            document.getElementById('history-modal-subtitle').textContent = `${user.role} - ${user.course} (ID: ${user.code})`;
+
+            const userLoans = loans.filter(l => l.userId === userId);
+            const tbody = document.getElementById('history-table-body');
+            const emptyState = document.getElementById('history-empty');
+
+            if (!tbody) return;
+            tbody.innerHTML = '';
+
+            if (userLoans.length === 0) {
+                if (emptyState) emptyState.classList.remove('hidden');
+            } else {
+                if (emptyState) emptyState.classList.add('hidden');
+                userLoans.slice().reverse().forEach(l => {
+                    const book = books.find(b => b.id === l.bookId) || { title: 'Llibre esborrat o no trobat' };
+                    let statusBadge = '';
+                    
+                    if (l.status === 'returned') {
+                        statusBadge = '<span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700">Llegit / Retornat</span>';
+                    } else if (l.status === 'overdue') {
+                        statusBadge = '<span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700">Préstec Retardat</span>';
+                    } else {
+                        statusBadge = '<span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700">En Lectura Actual</span>';
+                    }
+
+                    tbody.innerHTML += `
+                        <tr class="hover:bg-slate-50/70">
+                            <td class="p-3 font-semibold text-slate-900">${book.title}</td>
+                            <td class="p-3 text-slate-600 text-xs">${l.loanDate}</td>
+                            <td class="p-3 text-slate-600 text-xs">${l.returnDate ? l.returnDate : '-'}</td>
+                            <td class="p-3">${statusBadge}</td>
+                        </tr>
+                    `;
+                });
+            }
+
+            const modalHistory = document.getElementById('modal-history');
+            if (modalHistory) modalHistory.classList.remove('hidden');
+        }
+
+        function closeHistoryModal() {
+            const modalHistory = document.getElementById('modal-history');
+            if (modalHistory) modalHistory.classList.add('hidden');
+        }
+
+        function saveUser(e) {
+            e.preventDefault();
+            const id = document.getElementById('user-hidden-id').value;
+            const code = document.getElementById('user-code').value.trim() || 'REG-' + Math.floor(Math.random() * 899 + 100);
+            const role = document.getElementById('user-role').value || 'Alumnat';
+            const name = document.getElementById('user-name').value.trim() || 'Usuari Anònim';
+            const course = document.getElementById('user-course').value.trim() || 'Sense assignar';
+            const email = document.getElementById('user-email').value.trim() || 'sense-email@escola.cat';
+
+            if (id) {
+                const user = users.find(u => u.id === id);
+                if (user) {
+                    user.code = code;
+                    user.role = role;
+                    user.name = name;
+                    user.course = course;
+                    user.email = email;
+                    showToast('Usuari actualitzat correctament', 'success');
+                }
+            } else {
+                const newUser = {
+                    id: 'u_' + Date.now(),
+                    code, role, name, course, email
+                };
+                users.push(newUser);
+                showToast('Usuari registrat amb èxit', 'success');
+            }
+
+            saveData();
+            closeUserModal();
+            renderUsers();
+            renderDashboard();
+        }
+
+        function editUser(id) {
+            openUserModal(id);
+        }
+
+        function deleteUser(id) {
+            const activeLoan = loans.find(l => l.userId === id && l.status !== 'returned');
+            if (activeLoan) {
+                showToast('No es pot donar de baixa un usuari amb préstecs pendents', 'error');
+                return;
+            }
+            userPendingDeleteId = id;
+            const modalConfirm = document.getElementById('modal-confirm-delete-user');
+            if (modalConfirm) modalConfirm.classList.remove('hidden');
+        }
+
+        function cancelDeleteUser() {
+            userPendingDeleteId = null;
+            const modalConfirm = document.getElementById('modal-confirm-delete-user');
+            if (modalConfirm) modalConfirm.classList.add('hidden');
+        }
+
+        function confirmDeleteUserAction() {
+            if (!userPendingDeleteId) return;
+
+            users = users.filter(u => u.id !== userPendingDeleteId);
+            saveData();
+            renderUsers();
+            renderDashboard();
+
+            userPendingDeleteId = null;
+            const modalConfirm = document.getElementById('modal-confirm-delete-user');
+            if (modalConfirm) modalConfirm.classList.add('hidden');
+            showToast('Usuari donat de baixa', 'info');
+        }
+
+        // LOANS & RETURNS MANAGEMENT
+        function renderLoans() {
+            checkOverdueLoans();
+            const searchEl = document.getElementById('loan-search');
+            const statusEl = document.getElementById('filter-loan-status');
+            const tbody = document.getElementById('loans-table-body');
+            const emptyState = document.getElementById('loans-empty');
+
+            if (!tbody) return;
+            tbody.innerHTML = '';
+
+            const search = searchEl ? searchEl.value.toLowerCase() : '';
+            const statusFilter = statusEl ? statusEl.value : '';
+
+            const filtered = loans.filter(l => {
+                const book = books.find(b => b.id === l.bookId) || {};
+                const user = users.find(u => u.id === l.userId) || {};
+                const matchesSearch = (book.title && book.title.toLowerCase().includes(search)) || 
+                                      (user.name && user.name.toLowerCase().includes(search));
+                const matchesStatus = statusFilter === '' || 
+                                      (statusFilter === 'active' && (l.status === 'active' || l.status === 'overdue')) ||
+                                      l.status === statusFilter;
+                return matchesSearch && matchesStatus;
+            });
+
+            if (filtered.length === 0) {
+                if (emptyState) emptyState.classList.remove('hidden');
+            } else {
+                if (emptyState) emptyState.classList.add('hidden');
+                filtered.forEach(l => {
+                    const book = books.find(b => b.id === l.bookId) || { title: 'Llibre desconegut' };
+                    const user = users.find(u => u.id === l.userId) || { name: 'Usuari desconegut', course: '' };
+
+                    let statusBadge = '';
+                    if (l.status === 'returned') {
+                        statusBadge = `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700">Retornat (${l.returnDate})</span>`;
+                    } else if (l.status === 'overdue') {
+                        statusBadge = `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700">Retardat (Límit: ${l.dueDate})</span>`;
+                    } else {
+                        statusBadge = `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700">Pendent (Límit: ${l.dueDate})</span>`;
+                    }
+
+                    const actionBtn = l.status !== 'returned' 
+                        ? `<button type="button" onclick="returnBook('${l.id}')" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-medium px-3 py-1.5 rounded-lg text-xs transition flex items-center gap-1 ml-auto"><i class="fa-solid fa-rotate-left"></i> Registrar Devolució</button>`
+                        : `<span class="text-xs text-slate-400">Completat</span>`;
+
+                    tbody.innerHTML += `
+                        <tr class="hover:bg-slate-50/70 transition">
+                            <td class="p-4 font-bold text-slate-900">${book.title}</td>
+                            <td class="p-4">
+                                <div class="font-medium text-slate-900">${user.name}</div>
+                                <div class="text-xs text-slate-500">${user.course}</div>
+                            </td>
+                            <td class="p-4 text-slate-600 text-xs">${l.loanDate}</td>
+                            <td class="p-4 text-slate-600 text-xs">${l.dueDate}</td>
+                            <td class="p-4">${statusBadge}</td>
+                            <td class="p-4 text-right">${actionBtn}</td>
+                        </tr>
+                    `;
+                });
+            }
+        }
+
+        function openLoanModal() {
+            document.getElementById('loan-user-id').value = '';
+            document.getElementById('loan-user-search').value = '';
+            const userDropdown = document.getElementById('loan-user-dropdown');
+            if (userDropdown) userDropdown.classList.add('hidden');
+
+            document.getElementById('loan-book-id').value = '';
+            document.getElementById('loan-book-search').value = '';
+            const bookDropdown = document.getElementById('loan-book-dropdown');
+            if (bookDropdown) bookDropdown.classList.add('hidden');
+
+            const today = new Date();
+            const todayStr = today.toISOString().split('T')[0];
+            
+            const dueDate = new Date();
+            dueDate.setDate(today.getDate() + 14);
+            const dueDateStr = dueDate.toISOString().split('T')[0];
+
+            document.getElementById('loan-date').value = todayStr;
+            document.getElementById('loan-due-date').value = dueDateStr;
+
+            const modalLoan = document.getElementById('modal-loan');
+            if (modalLoan) modalLoan.classList.remove('hidden');
+        }
+
+        function filterLoanBooks() {
+            const searchInput = document.getElementById('loan-book-search');
+            if (!searchInput) return;
+            const query = searchInput.value.toLowerCase();
+            const dropdown = document.getElementById('loan-book-dropdown');
+            if (!dropdown) return;
+            dropdown.innerHTML = '';
+
+            if (query.trim() === '') {
+                dropdown.classList.add('hidden');
+                document.getElementById('loan-book-id').value = '';
+                return;
+            }
+
+            const availableBooks = books.filter(b => b.availableCopies > 0);
+            const filtered = availableBooks.filter(b => 
+                b.title.toLowerCase().includes(query) || 
+                b.author.toLowerCase().includes(query) || 
+                b.isbn.toLowerCase().includes(query) ||
+                b.category.toLowerCase().includes(query)
+            );
+
+            if (filtered.length === 0) {
+                dropdown.innerHTML = '<div class="p-3 text-xs text-slate-400">No s\'han trobat llibres disponibles amb aquest terme</div>';
+            } else {
+                filtered.forEach(b => {
+                    dropdown.innerHTML += `
+                        <div onclick="selectLoanBook('${b.id}', '${b.title.replace(/'/g, "\\'")}')" class="p-3 hover:bg-slate-50 cursor-pointer text-sm border-b border-slate-100 last:border-0">
+                            <div class="font-bold text-slate-800">${b.title}</div>
+                            <div class="text-xs text-slate-500">${b.author} &bull; Cat: ${b.category} &bull; Disp: ${b.availableCopies}</div>
+                        </div>
+                    `;
+                });
+            }
+            dropdown.classList.remove('hidden');
+        }
+
+        function selectLoanBook(id, displayName) {
+            document.getElementById('loan-book-id').value = id;
+            document.getElementById('loan-book-search').value = displayName;
+            const dropdown = document.getElementById('loan-book-dropdown');
+            if (dropdown) dropdown.classList.add('hidden');
+        }
+
+        function filterLoanUsers() {
+            const searchInput = document.getElementById('loan-user-search');
+            if (!searchInput) return;
+            const query = searchInput.value.toLowerCase();
+            const dropdown = document.getElementById('loan-user-dropdown');
+            if (!dropdown) return;
+            dropdown.innerHTML = '';
+
+            if (query.trim() === '') {
+                dropdown.classList.add('hidden');
+                document.getElementById('loan-user-id').value = '';
+                return;
+            }
+
+            const filtered = users.filter(u => 
+                u.name.toLowerCase().includes(query) || 
+                u.code.toLowerCase().includes(query) || 
+                u.course.toLowerCase().includes(query)
+            );
+
+            if (filtered.length === 0) {
+                dropdown.innerHTML = '<div class="p-3 text-xs text-slate-400">No s\'han trobat usuaris</div>';
+            } else {
+                filtered.forEach(u => {
+                    dropdown.innerHTML += `
+                        <div onclick="selectLoanUser('${u.id}', '${u.name.replace(/'/g, "\\'")}')" class="p-3 hover:bg-slate-50 cursor-pointer text-sm border-b border-slate-100 last:border-0">
+                            <div class="font-bold text-slate-800">${u.name}</div>
+                            <div class="text-xs text-slate-500">${u.role} &bull; ${u.course} &bull; ID: ${u.code}</div>
+                        </div>
+                    `;
+                });
+            }
+            dropdown.classList.remove('hidden');
+        }
+
+        function selectLoanUser(id, displayName) {
+            document.getElementById('loan-user-id').value = id;
+            document.getElementById('loan-user-search').value = displayName;
+            const dropdown = document.getElementById('loan-user-dropdown');
+            if (dropdown) dropdown.classList.add('hidden');
+        }
+
+        function closeLoanModal() {
+            const modalLoan = document.getElementById('modal-loan');
+            if (modalLoan) modalLoan.classList.add('hidden');
+        }
+
+        function saveLoan(e) {
+            e.preventDefault();
+            const userId = document.getElementById('loan-user-id').value;
+            const bookId = document.getElementById('loan-book-id').value;
+            const loanDate = document.getElementById('loan-date').value;
+            const dueDate = document.getElementById('loan-due-date').value;
+
+            if (!userId) {
+                showToast('Si us plau, selecciona un usuari vàlid de la llista', 'error');
+                return;
+            }
+
+            if (!bookId) {
+                showToast('Si us plau, resol i selecciona un llibre vàlid de la llista', 'error');
+                return;
+            }
+
+            const book = books.find(b => b.id === bookId);
+            if (!book || book.availableCopies <= 0) {
+                showToast('El llibre seleccionat no té exemplars disponibles', 'error');
+                return;
+            }
+
+            book.availableCopies -= 1;
+
+            const newLoan = {
+                id: 'l_' + Date.now(),
+                bookId,
+                userId,
+                loanDate,
+                dueDate,
+                returnDate: null,
+                status: 'active'
+            };
+
+            loans.push(newLoan);
+            saveData();
+            closeLoanModal();
+            renderLoans();
+            renderDashboard();
+            showToast('Préstec registrat correctament', 'success');
+        }
+
+        function returnBook(loanId) {
+            const loan = loans.find(l => l.id === loanId);
+            if (!loan || loan.status === 'returned') return;
+
+            const book = books.find(b => b.id === loan.bookId);
+            if (book) {
+                book.availableCopies = Math.min(book.totalCopies, book.availableCopies + 1);
+            }
+
+            const todayStr = new Date().toISOString().split('T')[0];
+            loan.status = 'returned';
+            loan.returnDate = todayStr;
+
+            saveData();
+            renderLoans();
+            renderDashboard();
+            showToast('Devolució registrada amb èxit. Estoc actualitzat.', 'success');
+        }
+
+        // Fem explícites les funcions públiques i registrem els clics amb JavaScript.
+        // Això evita dependre de handlers onclick inline, que alguns allotjaments poden bloquejar.
+        window.exportDataFile = exportDataFile;
+        window.exportExcelFile = exportExcelFile;
+        const exportJsonButton = document.getElementById('btn-export-json');
+        const exportExcelButton = document.getElementById('btn-export-excel');
+        if (exportJsonButton) exportJsonButton.addEventListener('click', function(event) {
+            event.preventDefault();
+            try { exportDataFile(); }
+            catch (error) {
+                console.error('Error inesperat en exportar JSON:', error);
+                alert('No s’ha pogut exportar el JSON: ' + (error && error.message ? error.message : 'error desconegut'));
+            }
+        });
+        if (exportExcelButton) exportExcelButton.addEventListener('click', function(event) {
+            event.preventDefault();
+            try { exportExcelFile(); }
+            catch (error) {
+                console.error('Error inesperat en exportar Excel:', error);
+                alert('No s’ha pogut exportar a Excel: ' + (error && error.message ? error.message : 'error desconegut'));
+            }
+        });
+
+        window.onload = function() {
+            renderDashboard();
+        }
+    </script>
+</body>
+</html>
